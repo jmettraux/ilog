@@ -1,4 +1,4 @@
 
-[ ] file rotation
-[ ] utc
+[x] file rotation
+[x] utc
 

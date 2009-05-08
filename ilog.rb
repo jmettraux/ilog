@@ -24,11 +24,12 @@
 
 require 'rubygems'
 
+require 'thread'
 require 'socket'
-require 'rufus-scheduler' # sudo gem install rufus-scheduler
+require 'rufus/scheduler' # sudo gem install rufus-scheduler
 
 
-class IrcLogger
+class Ilog
 
   def initialize (opts)
 
@@ -36,13 +37,24 @@ class IrcLogger
 
     @opts[:dir] ||= '.'
 
+    @mutex = Mutex.new
     determine_target_file
 
     @con = TCPSocket.open(@opts[:server], @opts[:port].to_i)
     nick = @opts[:nick]
+
     send "USER #{nick} #{nick}0 #{nick}1 :#{nick}"
     send "NICK #{nick}"
     send "JOIN ##{@opts[:channel]}"
+
+    #
+    # log rotation
+
+    @scheduler = Rufus::Scheduler.start_new(:frequency => 60)
+    @scheduler.every('1h') { determine_target_file }
+
+    #
+    # select loop (listening)
 
     loop do
       ready = select([ @con ], nil, nil, nil)
@@ -59,19 +71,28 @@ class IrcLogger
 
   def determine_target_file
 
-    @file.close if @file and @file != $stdout
+    @mutex.synchronize do
 
-    dir = @opts[:dir]
+      @file.close if @file and @file != $stdout
 
-    if dir == '-'
+      dir = @opts[:dir]
 
-      @file = $stdout
+      if dir == '-'
 
-    else
-      fn = "#{@opts[:server]}_#{@opts[:channel]}_#{Time.now.strftime('%F')}.txt"
-      path = "#{@opts[:dir]}/#{fn}"
+        @file = $stdout
 
-      @file = File.open(path, 'a')
+      else
+
+        fn = [
+          @opts[:server],
+          @opts[:channel],
+          Time.now.utc.strftime('%F'),
+        ].join('_') + '.txt'
+
+        path = "#{@opts[:dir]}/#{fn}"
+
+        @file = File.open(path, 'a')
+      end
     end
   end
 
@@ -85,12 +106,16 @@ class IrcLogger
 
   def receive_line (l)
 
-    if m = LREG.match(l)
-      @file.write "#{Time.now.strftime("%F %z %T")} #{m[1]}: #{m[4]}"
-    else
-      @file.write l
+    @mutex.synchronize do
+
+      if m = LREG.match(l)
+        @file.write "#{Time.now.utc.strftime('%F %T utc')} #{m[1]}: #{m[4]}"
+      else
+        @file.write l
+      end
+      @file.write "\n"
+      @file.flush
     end
-    @file.write "\n"
   end
 end
 
@@ -107,7 +132,13 @@ if __FILE__ == $0
   end
 
   USAGE = %{
-  = ruby ilog.rb -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
+  = ilog
+
+  stupid IRC channel logger, with log rotation
+
+  == usage
+  
+  ruby #{__FILE__} -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
 
   == for example
 
@@ -129,6 +160,6 @@ if __FILE__ == $0
     exit 1
   end
 
-  IrcLogger.new(opts)
+  Ilog.new(opts)
 end
 
