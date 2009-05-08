@@ -102,10 +102,14 @@ class Ilog
     @con.send("#{s}\r\n", 0)
   end
 
-  LREG = /^:(.*)!(.*) PRIVMSG (#.*) :(.*)$/
+  LREG = /^:(.*)!(.*) PRIVMSG (#[^ ]*) :(.*)$/
   LPING = /^PING :(.*)$/i
 
   def receive_line (l)
+
+    l = l.strip
+
+    return if l == ''
 
     if m = LPING.match(l)
       send "PONG :#{m[1]}"

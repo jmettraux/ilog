@@ -2,4 +2,7 @@
 [o] file rotation
 [o] utc
 [o] pong
+[o] don't log empty lines (after commands)
+[o] don't eat initial ":"
+[ ] :freenode-connect!freenode@freenode/bot/connect PRIVMSG nick :VERSION
 

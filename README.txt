@@ -9,7 +9,7 @@ stupid IRC channel logger with file rotation.
 
 will log the channel #fishing and place the logs in the current (.) directory.
 
-File are rotated every hour or so.
+File are rotated every day.
 
 
 == requirements
