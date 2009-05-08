@@ -102,7 +102,7 @@ class Ilog
     @con.send("#{s}\r\n", 0)
   end
 
-  LREG = /^:(.*)!(.*) PRIVMSG (#[^ ]*) :(.*)$/
+  LREG = /^:(.*)!(.*) PRIVMSG (#[^ ]+?) :(.*)$/
   LPING = /^PING :(.*)$/i
 
   def receive_line (l)
