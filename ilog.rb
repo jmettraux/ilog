@@ -103,8 +103,14 @@ class Ilog
   end
 
   LREG = /^:(.*)!(.*) PRIVMSG (#.*) :(.*)$/
+  LPING = /^PING :(.*)$/i
 
   def receive_line (l)
+
+    if m = LPING.match(l)
+      send "PONG :#{m[1]}"
+      return
+    end
 
     @mutex.synchronize do
 

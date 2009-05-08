@@ -1,4 +1,5 @@
 
-[x] file rotation
-[x] utc
+[o] file rotation
+[o] utc
+[o] pong
 
