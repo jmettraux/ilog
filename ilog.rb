@@ -118,12 +118,14 @@ class Ilog
 
     @mutex.synchronize do
 
+      @file.write("#{Time.now.utc.strftime('%F %T utc')} ")
+
       if m = LREG.match(l)
-        @file.write "#{Time.now.utc.strftime('%F %T utc')} #{m[1]}: #{m[4]}"
+        @file.write("#{m[1]}: #{m[4]}")
       else
-        @file.write l
+        @file.write(l)
       end
-      @file.write "\n"
+      @file.write("\n")
       @file.flush
     end
   end
@@ -142,17 +144,17 @@ if __FILE__ == $0
   end
 
   USAGE = %{
-  = ilog
+= ilog
 
-  stupid IRC channel logger, with log rotation
+stupid IRC channel logger, with log rotation
 
-  == usage
-  
-  ruby #{__FILE__} -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
+== usage
 
-  == for example
+ruby #{__FILE__} -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
 
-    ruby ilog.rb -s toto.skynet.nl -p 6667 -n toto -c biking -d /var/logs/irc/
+== for example
+
+  ruby ilog.rb -s toto.skynet.nl -p 6667 -n toto -c biking -d /var/logs/irc/
   }
 
   if opts['-h'] || opts['--help']
