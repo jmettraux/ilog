@@ -4,5 +4,7 @@
 [o] pong
 [o] don't log empty lines (after commands)
 [o] don't eat initial ":"
+[o] memo on join
+
 [ ] :freenode-connect!freenode@freenode/bot/connect PRIVMSG nick :VERSION
 

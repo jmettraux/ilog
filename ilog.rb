@@ -64,9 +64,14 @@ class Ilog
     #
     # history regex
 
-    @lhistory = @opts[:admins] ?
-      /^:(.*)!(.*) PRIVMSG #{@opts[:nick]} :history( .*)?$/ :
-      nil
+    @lhistory = @admins.empty? ?
+      nil :
+      /^:(.*)!(.*) PRIVMSG #{@opts[:nick]} :history( .*)?$/
+
+    #
+    # memos
+
+    @memos = @admins.empty? ? nil : {}
 
     #
     # select loop (listening)
@@ -111,6 +116,11 @@ class Ilog
     end
   end
 
+  def stime
+
+    Time.now.utc.strftime('%F %T utc')
+  end
+
   def send (s)
 
     #puts "out> #{s}"
@@ -119,10 +129,12 @@ class Ilog
 
   LREG = /^:(.*)!(.*) PRIVMSG (#[^ ]+?) :(.*)$/
   LPING = /^PING :(.*)$/i
+  LMEMO = /^memo ([^ :]+) *:(.+)$/
+  LJOIN = /^:(.*)!(.*) JOIN /
 
   def receive_line (l)
 
-    #puts l
+    puts l
 
     l = l.strip
 
@@ -132,6 +144,8 @@ class Ilog
       send "PONG :#{m[1]}"
       return
     end
+
+    # history
 
     if @lhistory && (m = @lhistory.match(l)) && @admins.include?(m[1])
 
@@ -145,11 +159,35 @@ class Ilog
       end
     end
 
+    # on join
+
+    if m = LJOIN.match(l)
+
+      (@memos.delete(m[1]) || []).each do |author, time, memo|
+        sleep 0.300
+        msg = "#{m[1]}: (memo from #{author} at #{time}) #{memo}"
+        send "PRIVMSG ##{@opts[:channel]} :#{msg}"
+        @mutex.synchronize { @file.puts("#{stime} #{@opts[:nick]}: #{msg}") }
+      end
+    end
+
+    # ...
+
+    m = LREG.match(l)
+
+    # memo
+
+    if m and @admins.include?(m[1]) and mm = LMEMO.match(m[4])
+      (@memos[mm[1]] ||= []) << [ m[1], Time.now.to_s, mm[2].strip ]
+    end
+
+    # regular logging
+
     @mutex.synchronize do
 
-      @file.write("#{Time.now.utc.strftime('%F %T utc')} ")
+      @file.write("#{stime} ")
 
-      if m = LREG.match(l)
+      if m
         ll = "#{m[1]}: #{m[4]}"
         @history << ll
         @file.write(ll)
