@@ -31,11 +31,17 @@ require 'rufus/scheduler' # sudo gem install rufus-scheduler
 
 class Ilog
 
+  HISTORY_MAX = 100
+    # remembers at max 100 lines of history
+
   def initialize (opts)
 
     @opts = opts
 
     @opts[:dir] ||= '.'
+
+    @history = []
+    @history_max = HISTORY_MAX
 
     @mutex = Mutex.new
     determine_target_file
@@ -52,6 +58,11 @@ class Ilog
 
     @scheduler = Rufus::Scheduler.start_new(:frequency => 60)
     @scheduler.every('1h') { determine_target_file }
+
+    #
+    # history regex
+
+    @lhistory = /^:(.*)!(.*) PRIVMSG #{@opts[:nick]} :history( .*)?$/
 
     #
     # select loop (listening)
@@ -107,6 +118,8 @@ class Ilog
 
   def receive_line (l)
 
+    #puts l
+
     l = l.strip
 
     return if l == ''
@@ -116,17 +129,34 @@ class Ilog
       return
     end
 
+    if m = @lhistory.match(l)
+      offset = (m[3] || 10).to_i rescue 10
+      offset = @history.length - offset
+      offset = 0 if offset < 0
+      @history[offset..-1].each do |hl|
+        send "PRIVMSG #{m[1]} :#{hl}"
+        sleep 0.100
+      end
+    end
+
     @mutex.synchronize do
 
       @file.write("#{Time.now.utc.strftime('%F %T utc')} ")
 
       if m = LREG.match(l)
-        @file.write("#{m[1]}: #{m[4]}")
+        ll = "#{m[1]}: #{m[4]}"
+        @history << ll
+        @file.write(ll)
       else
+        @history << l
         @file.write(l)
       end
       @file.write("\n")
       @file.flush
+    end
+
+    while @history.length > @history_max
+      @history.shift
     end
   end
 end
