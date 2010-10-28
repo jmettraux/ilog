@@ -43,6 +43,8 @@ class Ilog
     @history = []
     @history_max = HISTORY_MAX
 
+    @admins = (@opts[:admins] || '').split(',')
+
     @mutex = Mutex.new
     determine_target_file
 
@@ -62,7 +64,9 @@ class Ilog
     #
     # history regex
 
-    @lhistory = /^:(.*)!(.*) PRIVMSG #{@opts[:nick]} :history( .*)?$/
+    @lhistory = @opts[:admins] ?
+      /^:(.*)!(.*) PRIVMSG #{@opts[:nick]} :history( .*)?$/ :
+      nil
 
     #
     # select loop (listening)
@@ -129,13 +133,15 @@ class Ilog
       return
     end
 
-    if m = @lhistory.match(l)
+    if @lhistory && (m = @lhistory.match(l)) && @admins.include?(m[1])
+
       offset = (m[3] || 10).to_i rescue 10
       offset = @history.length - offset
       offset = 0 if offset < 0
+
       @history[offset..-1].each do |hl|
         send "PRIVMSG #{m[1]} :#{hl}"
-        sleep 0.100
+        sleep 0.500 # trying to avoid getting caught for flooding
       end
     end
 
@@ -185,6 +191,13 @@ ruby #{__FILE__} -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
 == for example
 
   ruby ilog.rb -s toto.skynet.nl -p 6667 -n toto -c biking -d /var/logs/irc/
+
+== advanced usage
+
+  -a {nick[s]_of_admin}
+    : specifies a admin, a person who has the right to talk to
+      the logger and issue a 'history' command to it
+      It's OK to specify a comma separated list of admin nicks.
   }
 
   if opts['-h'] || opts['--help']
@@ -192,7 +205,7 @@ ruby #{__FILE__} -s {server} -p {port} -n {nick} -c {channel} [-d {dir}]
     exit 0
   end
 
-  opts = %w[ server port nick channel dir ].inject({}) { |h, o|
+  opts = %w[ server port nick channel dir admins ].inject({}) { |h, o|
     h[o.to_sym] = opts["-#{o[0, 1]}"]
     h
   }
