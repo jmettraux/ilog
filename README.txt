@@ -14,7 +14,7 @@ File are rotated every day.
 
 == requirements
 
-ruby 1.8.6 or better, sudo gem install rufus-scheduler
+ruby 1.8.6 or better, gem install rufus-scheduler
 
 
 == license
